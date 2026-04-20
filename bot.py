@@ -101,15 +101,15 @@ def prepare_ru_post(item: NewsItem) -> tuple[str, str]:
 
 def format_post(category: dict, item: NewsItem, ru_title: str, ru_body: str) -> str:
     emoji = category["emoji"]
-    cat_title = category["title"]
+    hashtag = category.get("hashtag", "")
     parts = [
-        f"{emoji} <b>{html.escape(cat_title)}</b>",
-        "",
-        f"<b>{html.escape(ru_title)}</b>",
+        f"{emoji} <b>{html.escape(ru_title)}</b>",
     ]
     if ru_body:
         parts += ["", html.escape(ru_body)]
     parts += ["", f"🔗 <a href=\"{html.escape(item.link)}\">{html.escape(item.source)}</a>"]
+    if hashtag:
+        parts += ["", hashtag]
     return "\n".join(parts)
 
 
