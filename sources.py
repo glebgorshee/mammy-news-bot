@@ -1,6 +1,5 @@
 """
 RSS-источники по категориям. lang='ru' — не переводим, 'en' — переводим через Google.
-Все URL проверены 2026-04-20.
 """
 
 SOURCES = {
@@ -20,32 +19,48 @@ SOURCES = {
             {"name": "The Verge",          "url": "https://www.theverge.com/rss/index.xml",                          "lang": "en"},
         ],
     },
-    "music": {
-        "emoji": "🎵",
-        "title": "Музыка",
-        "hashtag": "#музыка",
+    "hiphop": {
+        "emoji": "🎤",
+        "title": "Хип-хоп и рэп",
+        "hashtag": "#хипхоп",
         "feeds": [
-            {"name": "InterMedia",        "url": "https://www.intermedia.ru/rss/news.xml",                    "lang": "ru"},
-            {"name": "Pitchfork News",    "url": "https://pitchfork.com/rss/news/",                           "lang": "en"},
-            {"name": "Pitchfork Reviews", "url": "https://pitchfork.com/feed/feed-news/rss",                  "lang": "en"},
-            {"name": "Mixmag",            "url": "https://mixmag.net/rss.xml",                                "lang": "en"},
-            {"name": "Billboard",         "url": "https://www.billboard.com/feed/",                           "lang": "en"},
-            {"name": "Rolling Stone",     "url": "https://www.rollingstone.com/music/music-news/feed/",       "lang": "en"},
-            {"name": "Consequence",       "url": "https://consequence.net/feed/",                             "lang": "en"},
+            {"name": "InterMedia",      "url": "https://www.intermedia.ru/rss/news.xml",    "lang": "ru"},
+            {"name": "XXL Magazine",    "url": "https://www.xxlmag.com/feed/",              "lang": "en"},
+            {"name": "HotNewHipHop",    "url": "https://www.hotnewhiphop.com/feed",         "lang": "en"},
+            {"name": "Pitchfork News",  "url": "https://pitchfork.com/rss/news/",           "lang": "en"},
+            {"name": "The Fader",       "url": "https://www.thefader.com/feed",             "lang": "en"},
+            {"name": "Billboard",       "url": "https://www.billboard.com/feed/",           "lang": "en"},
         ],
     },
-    "design": {
+    "street": {
         "emoji": "🎨",
-        "title": "Дизайн и искусство",
-        "hashtag": "#дизайн",
+        "title": "Стритвир, дизайн, искусство",
+        "hashtag": "#стритвир",
         "feeds": [
-            {"name": "DesignPub",         "url": "https://designpub.ru/feed",              "lang": "ru"},
-            {"name": "Dezeen",            "url": "https://www.dezeen.com/feed/",           "lang": "en"},
-            {"name": "Design Week",       "url": "https://www.designweek.co.uk/feed/",     "lang": "en"},
-            {"name": "Smashing Magazine", "url": "https://www.smashingmagazine.com/feed/", "lang": "en"},
-            {"name": "Hyperallergic",     "url": "https://hyperallergic.com/feed/",        "lang": "en"},
-            {"name": "Artnet News",       "url": "https://news.artnet.com/feed",           "lang": "en"},
-            {"name": "Colossal",          "url": "https://www.thisiscolossal.com/feed/",   "lang": "en"},
+            {"name": "The Blueprint",        "url": "https://theblueprint.ru/rss",                      "lang": "ru"},
+            {"name": "Hypebeast",            "url": "https://hypebeast.com/feed",                       "lang": "en"},
+            {"name": "Highsnobiety",         "url": "https://www.highsnobiety.com/feed/",               "lang": "en"},
+            {"name": "Dezeen",               "url": "https://www.dezeen.com/feed/",                     "lang": "en"},
+            {"name": "Designboom",           "url": "https://www.designboom.com/feed/",                 "lang": "en"},
+            {"name": "Dazed",                "url": "https://www.dazeddigital.com/rss",                 "lang": "en"},
+            {"name": "Wallpaper",            "url": "https://www.wallpaper.com/rss",                    "lang": "en"},
+            {"name": "Architectural Digest", "url": "https://www.architecturaldigest.com/feed/rss",     "lang": "en"},
+            {"name": "Juxtapoz",             "url": "https://www.juxtapoz.com/feed/",                   "lang": "en"},
+            {"name": "Colossal",             "url": "https://www.thisiscolossal.com/feed/",             "lang": "en"},
+            {"name": "Hyperallergic",        "url": "https://hyperallergic.com/feed/",                  "lang": "en"},
+        ],
+    },
+    "russia": {
+        "emoji": "🇷🇺",
+        "title": "Россия",
+        "hashtag": "#россия",
+        "feeds": [
+            {"name": "Лента.ру",     "url": "https://lenta.ru/rss/news",                         "lang": "ru"},
+            {"name": "ТАСС",         "url": "https://tass.ru/rss/v2.xml",                        "lang": "ru"},
+            {"name": "РИА Новости",  "url": "https://ria.ru/export/rss2/archive/index.xml",      "lang": "ru"},
+            {"name": "Интерфакс",    "url": "https://www.interfax.ru/rss.asp",                   "lang": "ru"},
+            {"name": "Коммерсантъ",  "url": "https://www.kommersant.ru/RSS/news.xml",            "lang": "ru"},
+            {"name": "Газета.ру",    "url": "https://www.gazeta.ru/export/rss/first.xml",        "lang": "ru"},
         ],
     },
     "economy": {
@@ -67,10 +82,8 @@ SOURCES = {
 }
 
 # Сколько постов публиковать за один прогон на категорию
-# Запусков 3 в день → 3 новости в каждой категории в день
+# 3 прогона в день × 1 пост = 3 новости в каждой категории в день
 POSTS_PER_CATEGORY = 1
 
 # Насколько свежими должны быть новости (часы)
-# 24 часа — чтобы за 3 прогона набрать по 3 поста в каждую категорию
-# даже если в какой-то момент у источников мало свежего
 FRESHNESS_HOURS = 24

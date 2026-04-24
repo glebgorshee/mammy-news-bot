@@ -10,13 +10,14 @@ import re
 import logging
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
+from urllib.parse import urljoin
 
 import feedparser
 import requests
 
 from sources import SOURCES, POSTS_PER_CATEGORY, FRESHNESS_HOURS
 from state import load_posted_urls, save_posted_urls
-from translator import translate_to_russian, smart_truncate
+from translator import prepare_post
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("bot")
@@ -30,13 +31,18 @@ class NewsItem:
     source: str
     lang: str
     published: datetime
+    image: str | None = None
 
 
 def parse_feed(source: dict) -> list[NewsItem]:
     try:
         feed = feedparser.parse(
             source["url"],
-            request_headers={"User-Agent": "Mozilla/5.0 NewsBot/1.0"},
+            request_headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
+                "Accept-Encoding": "gzip, deflate",
+            },
         )
     except Exception as e:
         log.warning("Ошибка парсинга %s: %s", source["url"], e)
@@ -57,8 +63,108 @@ def parse_feed(source: dict) -> list[NewsItem]:
             source=source["name"],
             lang=source["lang"],
             published=_parse_date(entry),
+            image=_extract_image_from_entry(entry),
         ))
     return items
+
+
+def _extract_image_from_entry(entry) -> str | None:
+    """Ищем изображение в полях RSS-записи (без обращения к сети)."""
+    # 1. media_content
+    for m in (entry.get("media_content") or []):
+        url = (m or {}).get("url")
+        if url:
+            return url
+    # 2. media_thumbnail
+    for m in (entry.get("media_thumbnail") or []):
+        url = (m or {}).get("url")
+        if url:
+            return url
+    # 3. enclosures
+    for enc in (entry.get("enclosures") or []):
+        if (enc.get("type") or "").startswith("image/"):
+            url = enc.get("href") or enc.get("url")
+            if url:
+                return url
+    # 4. links с rel=enclosure
+    for ln in (entry.get("links") or []):
+        if ln.get("rel") == "enclosure" and (ln.get("type") or "").startswith("image/"):
+            if ln.get("href"):
+                return ln["href"]
+    # 5. <img> в summary/content HTML
+    raw = entry.get("summary") or entry.get("description") or ""
+    content_list = entry.get("content") or []
+    if content_list and isinstance(content_list, list):
+        raw += " " + (content_list[0].get("value") or "")
+    m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', raw)
+    if m:
+        return m.group(1)
+    return None
+
+
+_BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+
+
+def _fetch_og_image(article_url: str) -> str | None:
+    """Fallback: скачиваем HTML статьи и парсим og:image. Возвращает абсолютный URL."""
+    try:
+        r = requests.get(
+            article_url,
+            headers={"User-Agent": _BROWSER_UA, "Accept": "text/html,*/*"},
+            timeout=10,
+            allow_redirects=True,
+        )
+        if r.status_code != 200:
+            return None
+        html_text = r.text[:400_000]
+        patterns = [
+            r'<meta\s+property=["\']og:image(?::secure_url|:url)?["\']\s+content=["\']([^"\']+)["\']',
+            r'<meta\s+content=["\']([^"\']+)["\']\s+property=["\']og:image(?::secure_url|:url)?["\']',
+            r'<meta\s+name=["\']twitter:image(?::src)?["\']\s+content=["\']([^"\']+)["\']',
+            r'<meta\s+content=["\']([^"\']+)["\']\s+name=["\']twitter:image(?::src)?["\']',
+            r'<link\s+rel=["\']image_src["\']\s+href=["\']([^"\']+)["\']',
+        ]
+        for p in patterns:
+            m = re.search(p, html_text, re.IGNORECASE)
+            if m:
+                return urljoin(article_url, html.unescape(m.group(1)))
+    except Exception as e:
+        log.debug("og:image fetch failed for %s: %s", article_url, e)
+    return None
+
+
+MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
+IMAGE_CONTENT_TYPES = ("image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif")
+
+
+def download_image(url: str) -> tuple[bytes, str] | None:
+    """Скачиваем картинку, возвращаем (bytes, content_type) или None."""
+    if not url:
+        return None
+    try:
+        r = requests.get(
+            url,
+            headers={"User-Agent": _BROWSER_UA, "Accept": "image/*,*/*;q=0.8", "Referer": url},
+            timeout=15,
+            stream=True,
+            allow_redirects=True,
+        )
+        if r.status_code != 200:
+            return None
+        ctype = (r.headers.get("content-type") or "").split(";")[0].strip().lower()
+        if ctype not in IMAGE_CONTENT_TYPES:
+            # Иногда сервер не ставит content-type, но URL явно ведёт на image
+            if not any(url.lower().split("?")[0].endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp", ".gif")):
+                return None
+            ctype = "image/jpeg"
+        # Читаем с лимитом
+        content = r.raw.read(MAX_IMAGE_BYTES + 1, decode_content=True)
+        if len(content) == 0 or len(content) > MAX_IMAGE_BYTES:
+            return None
+        return content, ctype
+    except Exception as e:
+        log.debug("Не удалось скачать картинку %s: %s", url, e)
+        return None
 
 
 def _parse_date(entry) -> datetime:
@@ -88,15 +194,8 @@ def collect_candidates(category_key: str) -> list[NewsItem]:
 
 
 def prepare_ru_post(item: NewsItem) -> tuple[str, str]:
-    """Вернуть (заголовок_на_рус, тело_на_рус)."""
-    if item.lang == "ru":
-        title_ru = item.title
-        body_ru = smart_truncate(item.summary, max_chars=450)
-    else:
-        title_ru = translate_to_russian(item.title, source_lang="en")
-        body_short = smart_truncate(item.summary, max_chars=500)
-        body_ru = translate_to_russian(body_short, source_lang="en")
-    return title_ru, body_ru
+    """Вернуть (заголовок_на_рус, тело_на_рус) — делегируется в translator.prepare_post."""
+    return prepare_post(item.title, item.summary, item.source, item.lang)
 
 
 def format_post(category: dict, item: NewsItem, ru_title: str, ru_body: str) -> str:
@@ -113,16 +212,37 @@ def format_post(category: dict, item: NewsItem, ru_title: str, ru_body: str) -> 
     return "\n".join(parts)
 
 
-def send_to_telegram(token: str, chat_id: str, text: str) -> bool:
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+def send_to_telegram(token: str, chat_id: str, text: str, image_url: str | None = None) -> bool:
+    # Сначала пробуем отправить фото: скачиваем сами и загружаем как файл (надёжнее, чем давать URL)
+    if image_url:
+        dl = download_image(image_url)
+        if dl is not None:
+            img_bytes, ctype = dl
+            ext = {"image/png": "png", "image/webp": "webp", "image/gif": "gif"}.get(ctype, "jpg")
+            try:
+                files = {"photo": (f"image.{ext}", img_bytes, ctype)}
+                data = {"chat_id": chat_id, "caption": text[:1020], "parse_mode": "HTML"}
+                r = requests.post(
+                    f"https://api.telegram.org/bot{token}/sendPhoto",
+                    data=data, files=files, timeout=60,
+                )
+                if r.status_code == 200:
+                    return True
+                log.warning("sendPhoto (multipart) %s: %s — fallback на текст", r.status_code, r.text[:200])
+            except Exception as e:
+                log.warning("sendPhoto ошибка: %s — fallback на текст", e)
+        else:
+            log.info("Картинку скачать не удалось, публикую как текст: %s", image_url[:80])
+
+    # Fallback: текстовое сообщение с link preview (Telegram сам покажет превью если сможет)
     payload = {
         "chat_id": chat_id,
-        "text": text[:4000],  # Telegram лимит 4096
+        "text": text[:4000],
         "parse_mode": "HTML",
         "disable_web_page_preview": False,
     }
     try:
-        r = requests.post(url, json=payload, timeout=30)
+        r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json=payload, timeout=30)
         if r.status_code == 200:
             return True
         log.error("Telegram API %s: %s", r.status_code, r.text)
@@ -161,7 +281,8 @@ def main() -> int:
                 continue
 
             post_text = format_post(category, item, ru_title, ru_body)
-            if send_to_telegram(token, chat_id, post_text):
+            img = item.image or _fetch_og_image(item.link)
+            if send_to_telegram(token, chat_id, post_text, image_url=img):
                 log.info("Опубликовано: %s", item.link)
                 new_urls.add(item.link)
                 picked += 1
