@@ -1,0 +1,14 @@
+* text=auto
+
+# Shell scripts must use LF (would fail on macOS/Linux with CRLF)
+*.sh text eol=lf
+
+# Python and config files: LF for cross-platform
+*.py text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+
+# PowerShell: CRLF (Windows-only)
+*.ps1 text eol=crlf
