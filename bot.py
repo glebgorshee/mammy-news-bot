@@ -273,7 +273,7 @@ def main() -> int:
         # Фильтр релевантности: проходим по самым свежим, GigaChat решает по теме или нет.
         # Ограничиваем число AI-проверок, чтобы не упереться в квоту.
         interests = category.get("interests") or ""
-        max_relevance_checks = 15
+        max_relevance_checks = 20
         relevant: list[NewsItem] = []
         for item in candidates[:max_relevance_checks]:
             if len(relevant) >= POSTS_PER_CATEGORY * 3:  # запас на случай если sendPhoto/перевод сломается
