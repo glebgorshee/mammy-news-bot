@@ -17,7 +17,7 @@ import requests
 
 from sources import SOURCES, POSTS_PER_CATEGORY, FRESHNESS_HOURS
 from state import load_posted_urls, save_posted_urls
-from translator import prepare_post
+from translator import prepare_post, is_relevant
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("bot")
@@ -270,8 +270,30 @@ def main() -> int:
         candidates = [c for c in candidates if c.link not in posted_urls]
         log.info("Кандидатов после фильтра по памяти: %d", len(candidates))
 
+        # Фильтр релевантности: проходим по самым свежим, GigaChat решает по теме или нет.
+        # Ограничиваем число AI-проверок, чтобы не упереться в квоту.
+        interests = category.get("interests") or ""
+        max_relevance_checks = 15
+        relevant: list[NewsItem] = []
+        for item in candidates[:max_relevance_checks]:
+            if len(relevant) >= POSTS_PER_CATEGORY * 3:  # запас на случай если sendPhoto/перевод сломается
+                break
+            try:
+                if is_relevant(item.title, item.summary, category["title"], interests):
+                    relevant.append(item)
+                else:
+                    log.info("  — нерелевантно: %s", item.title[:90])
+            except Exception as e:
+                log.warning("Ошибка проверки релевантности (%s), пропускаю", e)
+                relevant.append(item)
+        if not relevant and candidates:
+            # Если фильтр всех отбраковал — берём самую свежую как страховку
+            log.info("Релевантных не нашлось, беру самую свежую как fallback")
+            relevant = candidates[:POSTS_PER_CATEGORY]
+        log.info("Релевантных: %d", len(relevant))
+
         picked = 0
-        for item in candidates:
+        for item in relevant:
             if picked >= POSTS_PER_CATEGORY:
                 break
             try:
