@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 # Собирает .env + state.json в один zip-архив для переноса на Mac.
 # Эти файлы НЕ В ГИТЕ (секреты + история постов).
 
