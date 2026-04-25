@@ -61,6 +61,11 @@ SOURCES = {
             "- светские новости не из рэп-сцены."
         ),
         "feeds": [
+            # Telegram-каналы (русский рэп — первый приоритет)
+            {"name": "@rapsmi",          "url": "rapsmi",          "lang": "ru", "type": "telegram"},
+            {"name": "@rapnewstelegram", "url": "rapnewstelegram", "lang": "ru", "type": "telegram"},
+            {"name": "@hiphop4real",     "url": "hiphop4real",     "lang": "ru", "type": "telegram"},
+            # RSS-источники
             {"name": "InterMedia",      "url": "https://www.intermedia.ru/rss/news.xml",    "lang": "ru"},
             {"name": "XXL Magazine",    "url": "https://www.xxlmag.com/feed/",              "lang": "en"},
             {"name": "HotNewHipHop",    "url": "https://www.hotnewhiphop.com/feed",         "lang": "en"},

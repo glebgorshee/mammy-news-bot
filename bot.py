@@ -34,6 +34,107 @@ class NewsItem:
     image: str | None = None
 
 
+def parse_source(source: dict) -> list[NewsItem]:
+    """Диспетчер: RSS-фид или публичный Telegram-канал (t.me/s/...)."""
+    if source.get("type") == "telegram":
+        return parse_telegram_channel(source)
+    return parse_feed(source)
+
+
+def parse_telegram_channel(source: dict) -> list[NewsItem]:
+    """Парсит публичную web-версию Telegram-канала: https://t.me/s/<channel>."""
+    channel = source["url"].strip().lstrip("@")
+    url = f"https://t.me/s/{channel}"
+    try:
+        r = requests.get(
+            url,
+            headers={
+                "User-Agent": _BROWSER_UA,
+                "Accept": "text/html,application/xhtml+xml,*/*;q=0.9",
+            },
+            timeout=15,
+        )
+        if r.status_code != 200:
+            log.warning("Telegram %s status %s", url, r.status_code)
+            return []
+    except Exception as e:
+        log.warning("Telegram %s: %s", url, e)
+        return []
+
+    html_text = r.text
+    # Разбиваем на отдельные сообщения по якорю tgme_widget_message_wrap
+    chunks = re.split(r'<div class="tgme_widget_message_wrap', html_text)[1:]
+    items: list[NewsItem] = []
+
+    for chunk in chunks[-20:]:  # последние 20 постов
+        # Permalink: data-post="channel/id"
+        m_post = re.search(r'data-post="([^"]+)"', chunk)
+        if not m_post:
+            continue
+        post_id = m_post.group(1)
+        link = f"https://t.me/{post_id}"
+
+        # Дата публикации
+        m_dt = re.search(r'<time[^>]*datetime="([^"]+)"', chunk)
+        if not m_dt:
+            continue
+        try:
+            published = datetime.fromisoformat(m_dt.group(1).replace("Z", "+00:00"))
+            if published.tzinfo is None:
+                published = published.replace(tzinfo=timezone.utc)
+        except Exception:
+            continue
+
+        # Текст сообщения
+        m_text = re.search(
+            r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.+?)</div>\s*(?:<div class="tgme_widget_message_(?:reply_markup|footer))',
+            chunk,
+            re.DOTALL,
+        )
+        if not m_text:
+            m_text = re.search(
+                r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.+?)</div>',
+                chunk,
+                re.DOTALL,
+            )
+        if not m_text:
+            continue
+        # Превратим <br> в \n чтобы не клеились абзацы
+        raw_text = re.sub(r"<br\s*/?>", "\n", m_text.group(1))
+        text = _strip_html(raw_text).strip()
+        # Удалить хвост из реакций вида "❤ 27 🤮 4 🔥 3"
+        text = re.sub(r"(\s*\S+\s+\d+){2,}\s*$", "", text).strip()
+        if len(text) < 20:  # совсем короткие посты пропускаем (часто реклама/мем)
+            continue
+
+        # Заголовок = первая строка/предложение, тело = остальное
+        first_line = text.split("\n", 1)[0]
+        if len(first_line) > 200:
+            # Если первая строка слишком длинная — режем по точке
+            m_dot = re.search(r"^(.{20,180}?[.!?])\s", first_line + " ")
+            if m_dot:
+                first_line = m_dot.group(1)
+            else:
+                first_line = first_line[:180]
+        title = first_line.strip()
+        summary = text[len(first_line):].strip() or text
+
+        # Картинка из background-image:url('...')
+        m_img = re.search(r"background-image:\s*url\(['\"]?([^'\")]+)['\"]?\)", chunk)
+        image = m_img.group(1) if m_img else None
+
+        items.append(NewsItem(
+            title=title,
+            summary=summary,
+            link=link,
+            source=source["name"],
+            lang=source.get("lang", "ru"),
+            published=published,
+            image=image,
+        ))
+    return items
+
+
 def parse_feed(source: dict) -> list[NewsItem]:
     try:
         feed = feedparser.parse(
@@ -185,7 +286,7 @@ def collect_candidates(category_key: str) -> list[NewsItem]:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=FRESHNESS_HOURS)
     candidates: list[NewsItem] = []
     for source in SOURCES[category_key]["feeds"]:
-        items = parse_feed(source)
+        items = parse_source(source)
         fresh = [i for i in items if i.published >= cutoff]
         log.info("  %s: %d всего, %d свежих", source["name"], len(items), len(fresh))
         candidates.extend(fresh)
