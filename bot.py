@@ -314,14 +314,21 @@ def collect_candidates(category_key: str) -> list[NewsItem]:
     return candidates
 
 
-def prepare_ru_post(item: NewsItem) -> tuple[str, str]:
-    """Вернуть (заголовок_на_рус, тело_на_рус) — делегируется в translator.prepare_post."""
+def prepare_ru_post(item: NewsItem) -> tuple[str, str, str, str]:
+    """Вернуть (ru_title, ru_body, en_title, en_body) — делегируется в translator.prepare_post."""
     return prepare_post(item.title, item.summary, item.source, item.lang)
 
 
-def format_post(category: dict, item: NewsItem, ru_title: str, ru_body: str) -> str:
-    """Самодостаточный пост: заголовок + тело + хэштег. Без ссылок и атрибуции —
-    читатель должен узнавать всё прямо из текста, без перехода куда-либо."""
+def format_post(
+    category: dict,
+    item: NewsItem,
+    ru_title: str,
+    ru_body: str,
+    en_title: str = "",
+    en_body: str = "",
+) -> str:
+    """Двуязычный самодостаточный пост: RU-версия (заголовок + тело),
+    затем EN-версия для тренировки английского. Без ссылок и атрибуции."""
     emoji = category["emoji"]
     hashtag = category.get("hashtag", "")
     parts = [
@@ -329,39 +336,43 @@ def format_post(category: dict, item: NewsItem, ru_title: str, ru_body: str) -> 
     ]
     if ru_body:
         parts += ["", html.escape(ru_body)]
+    # Английская версия — для тренировки языка
+    if en_title or en_body:
+        parts += ["", "🇬🇧 " + (f"<b>{html.escape(en_title)}</b>" if en_title else "")]
+        if en_body:
+            parts += ["", html.escape(en_body)]
     if hashtag:
         parts += ["", hashtag]
     return "\n".join(parts)
 
 
-def send_to_telegram(token: str, chat_id: str, text: str, image_url: str | None = None) -> bool:
-    # Сначала пробуем отправить фото: скачиваем сами и загружаем как файл (надёжнее, чем давать URL)
-    if image_url:
-        dl = download_image(image_url)
-        if dl is not None:
-            img_bytes, ctype = dl
-            ext = {"image/png": "png", "image/webp": "webp", "image/gif": "gif"}.get(ctype, "jpg")
-            try:
-                files = {"photo": (f"image.{ext}", img_bytes, ctype)}
-                data = {"chat_id": chat_id, "caption": text[:1020], "parse_mode": "HTML"}
-                r = requests.post(
-                    f"https://api.telegram.org/bot{token}/sendPhoto",
-                    data=data, files=files, timeout=60,
-                )
-                if r.status_code == 200:
-                    return True
-                log.warning("sendPhoto (multipart) %s: %s — fallback на текст", r.status_code, r.text[:200])
-            except Exception as e:
-                log.warning("sendPhoto ошибка: %s — fallback на текст", e)
-        else:
-            log.info("Картинку скачать не удалось, публикую как текст: %s", image_url[:80])
+TG_CAPTION_LIMIT = 1020       # Telegram-предел caption у фото (1024, берём с запасом)
+TG_MESSAGE_LIMIT = 4000       # Предел текстового сообщения
 
-    # Fallback: текстовое сообщение с link preview (Telegram сам покажет превью если сможет)
+
+def _send_photo(token: str, chat_id: str, img_bytes: bytes, ctype: str, caption: str) -> bool:
+    ext = {"image/png": "png", "image/webp": "webp", "image/gif": "gif"}.get(ctype, "jpg")
+    try:
+        files = {"photo": (f"image.{ext}", img_bytes, ctype)}
+        data = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
+        r = requests.post(
+            f"https://api.telegram.org/bot{token}/sendPhoto",
+            data=data, files=files, timeout=60,
+        )
+        if r.status_code == 200:
+            return True
+        log.warning("sendPhoto %s: %s", r.status_code, r.text[:200])
+    except Exception as e:
+        log.warning("sendPhoto ошибка: %s", e)
+    return False
+
+
+def _send_message(token: str, chat_id: str, text: str) -> bool:
     payload = {
         "chat_id": chat_id,
-        "text": text[:4000],
+        "text": text[:TG_MESSAGE_LIMIT],
         "parse_mode": "HTML",
-        "disable_web_page_preview": False,
+        "disable_web_page_preview": True,
     }
     try:
         r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json=payload, timeout=30)
@@ -369,8 +380,40 @@ def send_to_telegram(token: str, chat_id: str, text: str, image_url: str | None 
             return True
         log.error("Telegram API %s: %s", r.status_code, r.text)
     except Exception as e:
-        log.error("Ошибка отправки в Telegram: %s", e)
+        log.error("Ошибка отправки сообщения: %s", e)
     return False
+
+
+def send_to_telegram(
+    token: str,
+    chat_id: str,
+    text: str,
+    image_data: tuple[bytes, str] | None = None,
+) -> bool:
+    """Отправляет двуязычный пост с обязательной картинкой.
+    Если текст длиннее caption-лимита (двуязычные посты), фото идёт первым
+    с компактной caption, а полный текст — следующим сообщением, чтобы
+    у мамы под картинкой шёл нормальный читабельный длинный пост."""
+    if image_data is None:
+        # Без картинки в этом потоке мы сюда не попадаем (фильтрация выше),
+        # но на всякий случай — fallback на текст.
+        return _send_message(token, chat_id, text)
+
+    img_bytes, ctype = image_data
+
+    if len(text) <= TG_CAPTION_LIMIT:
+        # Короткий пост влезает в caption — одно сообщение
+        return _send_photo(token, chat_id, img_bytes, ctype, text)
+
+    # Двуязычный пост обычно длиннее лимита. Шлём фото с заголовком + первой строчкой
+    # как caption-anchor, а полный пост следом отдельным сообщением.
+    short_caption_lines = text.split("\n", 4)[:1]  # только заголовок-строка с эмодзи
+    short_caption = "\n".join(short_caption_lines)[:TG_CAPTION_LIMIT]
+    if not _send_photo(token, chat_id, img_bytes, ctype, short_caption):
+        # Если фото не зашло — отдаём всё текстом
+        return _send_message(token, chat_id, text)
+    # Полный текст следом
+    return _send_message(token, chat_id, text)
 
 
 def main() -> int:
@@ -409,11 +452,13 @@ def main() -> int:
 
         # Фильтр релевантности: проходим по самым свежим, GigaChat решает по теме или нет.
         # Ограничиваем число AI-проверок, чтобы не упереться в квоту.
+        # Берём с запасом — пост без картинки пропускается, нужно несколько
+        # кандидатов на случай "выпадения" по медиа.
         interests = category.get("interests") or ""
-        max_relevance_checks = 20
+        max_relevance_checks = 25
         relevant: list[NewsItem] = []
         for item in candidates[:max_relevance_checks]:
-            if len(relevant) >= POSTS_PER_CATEGORY * 3:  # запас на случай если sendPhoto/перевод сломается
+            if len(relevant) >= POSTS_PER_CATEGORY * 6:  # большой запас под медиа-фильтр
                 break
             try:
                 if is_relevant(item.title, item.summary, category["title"], interests):
@@ -426,22 +471,33 @@ def main() -> int:
         if not relevant and candidates:
             # Если фильтр всех отбраковал — берём самую свежую как страховку
             log.info("Релевантных не нашлось, беру самую свежую как fallback")
-            relevant = candidates[:POSTS_PER_CATEGORY]
+            relevant = candidates[: POSTS_PER_CATEGORY * 6]
         log.info("Релевантных: %d", len(relevant))
 
         picked = 0
         for item in relevant:
             if picked >= POSTS_PER_CATEGORY:
                 break
+
+            # МЕДИА ОБЯЗАТЕЛЬНО: ищем картинку до подготовки поста.
+            # Если не нашли — пропускаем кандидата, берём следующего.
+            img_url = item.image or _fetch_og_image(item.link)
+            if not img_url:
+                log.info("  — без картинки, пропускаю: %s", item.title[:90])
+                continue
+            img_dl = download_image(img_url)
+            if img_dl is None:
+                log.info("  — картинка не качается, пропускаю: %s", img_url[:80])
+                continue
+
             try:
-                ru_title, ru_body = prepare_ru_post(item)
+                ru_title, ru_body, en_title, en_body = prepare_ru_post(item)
             except Exception as e:
                 log.warning("Ошибка подготовки поста %s: %s", item.link, e)
                 continue
 
-            post_text = format_post(category, item, ru_title, ru_body)
-            img = item.image or _fetch_og_image(item.link)
-            if send_to_telegram(token, chat_id, post_text, image_url=img):
+            post_text = format_post(category, item, ru_title, ru_body, en_title, en_body)
+            if send_to_telegram(token, chat_id, post_text, image_data=img_dl):
                 log.info("Опубликовано: %s", item.link)
                 new_urls.add(item.link)
                 picked += 1

@@ -14,27 +14,32 @@ log = logging.getLogger("translator")
 
 # ----------------------------- Промпт для написания поста -----------------------------
 
-WRITE_SYSTEM_PROMPT = """Ты — редактор живого русскоязычного Telegram-канала. Пишешь самодостаточные мини-новости: пост читается как законченная история, никуда переходить не надо. Стиль живой, человеческий, без канцелярита и пресс-релизного шаблона.
+WRITE_SYSTEM_PROMPT = """Ты — редактор Telegram-канала, который выпускает посты сразу на двух языках: русском и английском. Каждый пост — самодостаточная мини-новость, читается как законченная история.
 
-На вход — заголовок и описание (могут быть на английском). Делаешь из этого компактную, но СОДЕРЖАТЕЛЬНУЮ версию новости на русском.
+На вход — заголовок и описание (могут быть на английском или русском). Делаешь ДВЕ версии: русскую и английскую. Обе версии описывают одно и то же, в одинаковом стиле и объёме, чтобы читатель мог тренировать английский, сравнивая текст.
 
-Структура:
-- Заголовок: одна строка, до 90 символов. Цепкий, без эмодзи и без восклицательных знаков.
-- Тело: 3-5 коротких живых предложений. Излагаешь суть так, чтобы у читателя НЕ возникало ощущения тизера — все ключевые факты прямо в посте.
+Стиль обеих версий:
+- Самодостаточно: пост закончен сам по себе, никаких «по ссылке» или «читайте подробнее»
+- Живой человеческий язык, без канцелярита и пресс-релизного шаблона
+- 3-5 коротких живых предложений в теле, заголовок до 90 символов и без восклицательных знаков
+- Сохраняй имена, цифры, даты, бренды, названия треков/альбомов из исходника
+- Не пиши «в статье рассказывается», «автор отмечает» / «the article states», «according to» — излагай факты напрямую
+- Никаких «поразительно», «amazingly», «incredibly» — факты + красивый язык
+- Если в исходнике есть конкретный факт (цифра, цитата, гость на треке) — обязательно вставь его в обе версии
+- Ничего не выдумывай: чего нет в исходнике, того не пишем
+- Англоязычные имена и бренды в РУССКОЙ версии оставляй латиницей без транслитерации (Travis Scott, Drake, OpenAI, Anthropic, Nike). Русские артисты — как принято в сцене (OG Buda, MAYOT, ATM)
 
-Стиль:
-- Самодостаточно: ни «читайте подробнее», ни «по ссылке» — пост закончен сам по себе
-- Сохраняй все имена, цифры, даты, бренды, названия продуктов и треков/альбомов из исходника
-- Не пиши «в статье рассказывается», «автор отмечает», «по словам», «сообщается» — излагай факты напрямую
-- Англоязычные имена и бренды оставляй латиницей без транслитерации (Travis Scott, Future, Drake, OpenAI, Anthropic, Nike). Русские артисты — как принято в сцене (OG Buda, MAYOT, ATM — обычно латиницей)
-- Никаких «поразительно», «невероятно», «сенсационно» — факты + красивый язык
-- Если в исходнике есть яркий конкретный факт (цифра, цитата, дата релиза, гость на треке) — обязательно вставь его в тело
-- Ничего не выдумывай: если детали нет в исходнике — её не пишем
+Английская версия:
+- Естественный современный английский (American English)
+- Та же длина и структура что и русская (3-5 предложений)
+- Такой же информативный, не более и не менее
 
-Ответ СТРОГО в формате (без комментариев, без эмодзи, без пометок типа «вот пост»):
+Ответ СТРОГО в формате (4 строки/блока, без комментариев, без эмодзи, без пометок «вот пост»):
 
-ЗАГОЛОВОК: <русский заголовок>
-ТЕКСТ: <3-5 предложений целостного описания>"""
+ЗАГОЛОВОК RU: <русский заголовок>
+ТЕКСТ RU: <русское тело, 3-5 предложений>
+TITLE EN: <english headline>
+TEXT EN: <english body, 3-5 sentences>"""
 
 
 # ----------------------------- Промпт для проверки релевантности -----------------------------
@@ -100,8 +105,9 @@ def is_relevant(title: str, summary: str, category_title: str, interests: str) -
 
 # ----------------------------- Подготовка поста -----------------------------
 
-def prepare_post(title: str, summary: str, source: str, lang: str) -> tuple[str, str]:
-    """Возвращает (заголовок_на_рус, тело_на_рус) для публикации."""
+def prepare_post(title: str, summary: str, source: str, lang: str) -> tuple[str, str, str, str]:
+    """Возвращает (ru_title, ru_body, en_title, en_body) для публикации.
+    Двуязычный пост: русская версия + английская той же стилистики."""
     giga = _giga_client()
     if giga is not None:
         try:
@@ -110,39 +116,66 @@ def prepare_post(title: str, summary: str, source: str, lang: str) -> tuple[str,
                 f"Заголовок: {title}\n\n"
                 f"Описание: {(summary or '')[:1800]}"
             )
-            resp = giga.chat(WRITE_SYSTEM_PROMPT, user_msg, max_tokens=500, temperature=0.4)
-            ru_title, ru_body = _parse_giga_response(resp)
+            # max_tokens увеличен — теперь генерим обе версии разом
+            resp = giga.chat(WRITE_SYSTEM_PROMPT, user_msg, max_tokens=900, temperature=0.4)
+            ru_title, ru_body, en_title, en_body = _parse_giga_response(resp)
             if ru_title and ru_body:
-                return ru_title, ru_body
-            log.warning("GigaChat вернул пустой title/body, fallback")
+                # Если EN не получили — fallback переводим RU → EN через Google
+                if not en_title:
+                    en_title = _google_en(ru_title)
+                if not en_body:
+                    en_body = _google_en(ru_body)
+                return ru_title, ru_body, en_title, en_body
+            log.warning("GigaChat вернул пустой RU title/body, fallback")
         except Exception as e:
             log.warning("GigaChat ошибка (%s), fallback на Google", e)
 
     return _fallback_google(title, summary, lang)
 
 
-def _parse_giga_response(text: str) -> tuple[str, str]:
+def _parse_giga_response(text: str) -> tuple[str, str, str, str]:
+    """Достаёт 4 поля из ответа: RU заголовок/текст и EN title/body.
+    Принимает варианты пометок: ЗАГОЛОВОК RU, RU TITLE, TITLE EN и т.п."""
     text = (text or "").strip()
-    title = ""
-    body = ""
-    m_title = re.search(r"ЗАГОЛОВОК\s*:\s*(.+)", text)
-    if m_title:
-        title = m_title.group(1).strip().rstrip(".").strip()
-    m_body = re.search(r"ТЕКСТ\s*:\s*(.+)", text, re.DOTALL)
-    if m_body:
-        body = m_body.group(1).strip()
-    return title, body
+
+    def grab(patterns: list[str], dotall: bool = False) -> str:
+        flags = re.DOTALL if dotall else 0
+        for p in patterns:
+            m = re.search(p, text, flags)
+            if m:
+                val = m.group(1).strip()
+                # Обрезаем по следующей метке (если поле "съело" следующее)
+                val = re.split(
+                    r"\n\s*(?:ЗАГОЛОВОК\s*RU|ТЕКСТ\s*RU|TITLE\s*EN|TEXT\s*EN|ENGLISH|RU\s*TITLE|RU\s*TEXT|EN\s*TITLE|EN\s*TEXT)\s*:",
+                    val, maxsplit=1,
+                )[0].strip()
+                return val.rstrip(".").strip() if "ЗАГОЛОВОК" in p or "TITLE" in p else val
+        return ""
+
+    ru_title = grab([r"ЗАГОЛОВОК\s*RU\s*:\s*(.+)", r"RU\s*TITLE\s*:\s*(.+)", r"ЗАГОЛОВОК\s*:\s*(.+)"])
+    ru_body  = grab([r"ТЕКСТ\s*RU\s*:\s*(.+)", r"RU\s*TEXT\s*:\s*(.+)", r"ТЕКСТ\s*:\s*(.+)"], dotall=True)
+    en_title = grab([r"TITLE\s*EN\s*:\s*(.+)", r"EN\s*TITLE\s*:\s*(.+)", r"ENGLISH\s*TITLE\s*:\s*(.+)"])
+    en_body  = grab([r"TEXT\s*EN\s*:\s*(.+)", r"EN\s*TEXT\s*:\s*(.+)", r"ENGLISH\s*TEXT\s*:\s*(.+)"], dotall=True)
+
+    return ru_title, ru_body, en_title, en_body
 
 
 # ----------------------------- Fallback: Google Translate -----------------------------
 
-def _fallback_google(title: str, summary: str, lang: str) -> tuple[str, str]:
+def _fallback_google(title: str, summary: str, lang: str) -> tuple[str, str, str, str]:
+    """Без GigaChat: переводим оригинал на русский + сохраняем оригинал/EN."""
     if lang == "ru":
-        return title, smart_truncate(summary, 450)
-    ru_title = _google(title)
-    body = smart_truncate(summary, 500)
-    ru_body = _google(body)
-    return ru_title, ru_body
+        ru_title = title
+        ru_body = smart_truncate(summary, 450)
+        en_title = _google_en(title)
+        en_body = _google_en(ru_body)
+    else:
+        # Источник на английском — берём как EN, переводим в RU
+        en_title = title
+        en_body = smart_truncate(summary, 500)
+        ru_title = _google(title)
+        ru_body = _google(en_body)
+    return ru_title, ru_body, en_title, en_body
 
 
 def _google(text: str) -> str:
@@ -153,6 +186,17 @@ def _google(text: str) -> str:
         return GoogleTranslator(source="auto", target="ru").translate(text[:4800]) or text
     except Exception as e:
         log.warning("Google translate failed: %s", e)
+        return text
+
+
+def _google_en(text: str) -> str:
+    text = (text or "").strip()
+    if not text:
+        return ""
+    try:
+        return GoogleTranslator(source="auto", target="en").translate(text[:4800]) or text
+    except Exception as e:
+        log.warning("Google translate (EN) failed: %s", e)
         return text
 
 
