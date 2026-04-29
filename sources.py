@@ -32,15 +32,23 @@ SOURCES = {
             "- AI в военке, биотехе, медицине без связи с творческими/потребительскими инструментами."
         ),
         "feeds": [
+            # Русские
             {"name": "Habr AI",            "url": "https://habr.com/ru/rss/hub/artificial_intelligence/all/?fl=ru", "lang": "ru"},
             {"name": "Habr ML",            "url": "https://habr.com/ru/rss/hub/machine_learning/all/?fl=ru",         "lang": "ru"},
+            # Лаборатории и крупные издания
             {"name": "OpenAI",             "url": "https://openai.com/news/rss.xml",                                 "lang": "en"},
             {"name": "Google AI",          "url": "https://blog.google/technology/ai/rss/",                          "lang": "en"},
             {"name": "DeepMind",           "url": "https://deepmind.google/blog/rss.xml",                            "lang": "en"},
+            {"name": "Hugging Face",       "url": "https://huggingface.co/blog/feed.xml",                            "lang": "en"},
             {"name": "MIT Tech Review AI", "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed", "lang": "en"},
             {"name": "Ars Technica AI",    "url": "https://arstechnica.com/ai/feed/",                                "lang": "en"},
             {"name": "TechCrunch AI",      "url": "https://techcrunch.com/category/artificial-intelligence/feed/",   "lang": "en"},
             {"name": "The Verge",          "url": "https://www.theverge.com/rss/index.xml",                          "lang": "en"},
+            # Авторские блоги/ньюслеттеры — высший сигнал по AI
+            {"name": "Simon Willison",     "url": "https://simonwillison.net/atom/everything/",                      "lang": "en"},
+            {"name": "Latent Space",       "url": "https://www.latent.space/feed",                                   "lang": "en"},
+            {"name": "Import AI",          "url": "https://importai.substack.com/feed",                              "lang": "en"},
+            {"name": "Last Week in AI",    "url": "https://lastweekin.ai/feed",                                      "lang": "en"},
         ],
     },
     "hiphop": {
@@ -109,12 +117,15 @@ SOURCES = {
             {"name": "@rapsmi",          "url": "rapsmi",          "lang": "ru", "type": "telegram"},
             {"name": "@rapnewstelegram", "url": "rapnewstelegram", "lang": "ru", "type": "telegram"},
             {"name": "@hiphop4real",     "url": "hiphop4real",     "lang": "ru", "type": "telegram"},
-            # RSS-источники
+            # Русские RSS
             {"name": "InterMedia",      "url": "https://www.intermedia.ru/rss/news.xml",    "lang": "ru"},
+            # Зарубежные RSS — крупные издания
             {"name": "XXL Magazine",    "url": "https://www.xxlmag.com/feed/",              "lang": "en"},
             {"name": "HotNewHipHop",    "url": "https://www.hotnewhiphop.com/feed",         "lang": "en"},
+            {"name": "Complex Music",   "url": "https://www.complex.com/music.xml",         "lang": "en"},
             {"name": "Pitchfork News",  "url": "https://pitchfork.com/rss/news/",           "lang": "en"},
             {"name": "The Fader",       "url": "https://www.thefader.com/feed",             "lang": "en"},
+            {"name": "Stereogum",       "url": "https://stereogum.com/feed",                "lang": "en"},
             {"name": "Billboard",       "url": "https://www.billboard.com/feed/",           "lang": "en"},
         ],
     },
@@ -132,14 +143,22 @@ SOURCES = {
             "сухие отчёты о выставках без сути, чистая высокая мода без уличного контекста."
         ),
         "feeds": [
+            # Русские
             {"name": "The Blueprint",        "url": "https://theblueprint.ru/rss",                      "lang": "ru"},
+            # Стритвир / мода
             {"name": "Hypebeast",            "url": "https://hypebeast.com/feed",                       "lang": "en"},
             {"name": "Highsnobiety",         "url": "https://www.highsnobiety.com/feed/",               "lang": "en"},
+            {"name": "Dazed",                "url": "https://www.dazeddigital.com/rss",                 "lang": "en"},
+            # Дизайн / архитектура
             {"name": "Dezeen",               "url": "https://www.dezeen.com/feed/",                     "lang": "en"},
             {"name": "Designboom",           "url": "https://www.designboom.com/feed/",                 "lang": "en"},
-            {"name": "Dazed",                "url": "https://www.dazeddigital.com/rss",                 "lang": "en"},
+            {"name": "ArchDaily",            "url": "https://feeds.feedburner.com/Archdaily",           "lang": "en"},
+            {"name": "Design Milk",          "url": "https://design-milk.com/feed/",                    "lang": "en"},
             {"name": "Wallpaper",            "url": "https://www.wallpaper.com/rss",                    "lang": "en"},
             {"name": "Architectural Digest", "url": "https://www.architecturaldigest.com/feed/rss",     "lang": "en"},
+            # Искусство / визуальная культура
+            {"name": "It's Nice That",       "url": "https://feeds2.feedburner.com/itsnicethat/SlXC",   "lang": "en"},
+            {"name": "Cool Hunting",         "url": "https://coolhunting.com/feed/",                    "lang": "en"},
             {"name": "Juxtapoz",             "url": "https://www.juxtapoz.com/feed/",                   "lang": "en"},
             {"name": "Colossal",             "url": "https://www.thisiscolossal.com/feed/",             "lang": "en"},
             {"name": "Hyperallergic",        "url": "https://hyperallergic.com/feed/",                  "lang": "en"},
@@ -192,15 +211,25 @@ SOURCES = {
             "внутренние бытовые истории, политика без экономического контекста."
         ),
         "feeds": [
+            # Русские крупные
             {"name": "RBC",              "url": "https://rssexport.rbc.ru/rbcnews/news/30/full.rss",     "lang": "ru"},
             {"name": "Коммерсантъ",      "url": "https://www.kommersant.ru/RSS/section-economics.xml",   "lang": "ru"},
             {"name": "Forbes.ru",        "url": "https://www.forbes.ru/newrss.xml",                      "lang": "ru"},
+            # Русские независимые премиум-качество
+            {"name": "The Bell",         "url": "https://thebell.io/feed",                               "lang": "ru"},
+            {"name": "Frank Media",      "url": "https://frankmedia.ru/feed",                            "lang": "ru"},
+            # Зарубежные крупные
+            {"name": "CNBC Business",    "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147", "lang": "en"},
+            # Крипта (русские)
             {"name": "ForkLog",          "url": "https://forklog.com/feed",                              "lang": "ru"},
             {"name": "Incrypted",        "url": "https://incrypted.com/feed/",                           "lang": "ru"},
+            # Крипта (зарубежные)
             {"name": "CoinDesk",         "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",       "lang": "en"},
             {"name": "Decrypt",          "url": "https://decrypt.co/feed",                               "lang": "en"},
             {"name": "The Block",        "url": "https://www.theblock.co/rss.xml",                       "lang": "en"},
-            {"name": "CNBC Business",    "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147", "lang": "en"},
+            {"name": "CoinTelegraph",    "url": "https://cointelegraph.com/rss",                         "lang": "en"},
+            {"name": "Bankless",         "url": "https://www.bankless.com/feed",                         "lang": "en"},
+            {"name": "The Defiant",      "url": "https://thedefiant.io/feed",                            "lang": "en"},
         ],
     },
 }
