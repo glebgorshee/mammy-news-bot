@@ -47,7 +47,7 @@ SOURCES = {
             # Авторские блоги/ньюслеттеры — высший сигнал по AI
             {"name": "Simon Willison",     "url": "https://simonwillison.net/atom/everything/",                      "lang": "en"},
             {"name": "Latent Space",       "url": "https://www.latent.space/feed",                                   "lang": "en"},
-            {"name": "Import AI",          "url": "https://importai.substack.com/feed",                              "lang": "en"},
+            {"name": "Andrej Karpathy",    "url": "https://karpathy.bearblog.dev/feed/",                             "lang": "en"},
             {"name": "Last Week in AI",    "url": "https://lastweekin.ai/feed",                                      "lang": "en"},
         ],
     },
