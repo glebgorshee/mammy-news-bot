@@ -34,11 +34,19 @@ WRITE_SYSTEM_PROMPT = """Ты — редактор Telegram-канала, кот
 - Та же длина и структура что и русская (3-5 предложений)
 - Такой же информативный, не более и не менее
 
-Ответ СТРОГО в формате (4 строки/блока, без комментариев, без эмодзи, без пометок «вот пост»):
+Регистр заголовков:
+- Обычный регистр предложения. Имена собственные с большой, остальное со строчной
+- НЕ используй ВЕСЬ КАПС и НЕ используй Title Case Where Every Word Is Capitalized
+- Пример хорошо: «RZA рад, что A$AP Rocky и Rihanna назвали сына в его честь»
+- Пример плохо: «RZA О НАЗВАНИИ СЫНА A$AP ROCKY ЕГО ИМЕНЕМ»
+
+ВАЖНО: каждый из четырёх блоков начинай с НОВОЙ СТРОКИ. Между блоками — перевод строки.
+
+Ответ СТРОГО в формате (без комментариев, без эмодзи, без пометок «вот пост»):
 
 ЗАГОЛОВОК RU: <русский заголовок>
 ТЕКСТ RU: <русское тело, 3-5 предложений>
-TITLE EN: <english headline>
+TITLE EN: <english headline in sentence case>
 TEXT EN: <english body, 3-5 sentences>"""
 
 
@@ -138,17 +146,22 @@ def _parse_giga_response(text: str) -> tuple[str, str, str, str]:
     Принимает варианты пометок: ЗАГОЛОВОК RU, RU TITLE, TITLE EN и т.п."""
     text = (text or "").strip()
 
+    # Метки, которые могут идти ПОСЛЕ текущего поля и которые нужно отрезать.
+    # GigaChat иногда не ставит \n между блоками, поэтому обрезаем и по пробелу/переводу.
+    next_label_re = (
+        r"(?:^|\s)(?:ЗАГОЛОВОК\s*RU|ТЕКСТ\s*RU|TITLE\s*EN|TEXT\s*EN|ENGLISH(?:\s+(?:TITLE|TEXT))?"
+        r"|RU\s*TITLE|RU\s*TEXT|EN\s*TITLE|EN\s*TEXT)\s*:"
+    )
+
     def grab(patterns: list[str], dotall: bool = False) -> str:
         flags = re.DOTALL if dotall else 0
         for p in patterns:
             m = re.search(p, text, flags)
             if m:
                 val = m.group(1).strip()
-                # Обрезаем по следующей метке (если поле "съело" следующее)
-                val = re.split(
-                    r"\n\s*(?:ЗАГОЛОВОК\s*RU|ТЕКСТ\s*RU|TITLE\s*EN|TEXT\s*EN|ENGLISH|RU\s*TITLE|RU\s*TEXT|EN\s*TITLE|EN\s*TEXT)\s*:",
-                    val, maxsplit=1,
-                )[0].strip()
+                # Обрезаем по следующей метке (если поле "съело" следующее).
+                # Разделитель — \n ИЛИ пробел: GigaChat иногда выдаёт всё в одну строку.
+                val = re.split(next_label_re, val, maxsplit=1)[0].strip()
                 return val.rstrip(".").strip() if "ЗАГОЛОВОК" in p or "TITLE" in p else val
         return ""
 
