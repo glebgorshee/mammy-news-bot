@@ -258,7 +258,38 @@ HARD_REJECT_PATTERNS = {
         r"тейлор\s+свифт|taylor\s+swift",
         r"селена\s+гомес|selena\s+gomez",
         r"бритни\s+спирс|britney\s+spears",
+        r"ариана\s+гранде|ariana\s+grande",
         r"\bsnl\b",
         r"saturday\s+night\s+live",
+        # --- Кантри (мейнстрим-имена и ключевые слова) ---
+        r"\bcountry\s+(music|singer|star|artist|song|album)",
+        r"кантри-(музык|певи|звезд|артист)",
+        r"carrie\s+underwood",
+        r"kacey\s+musgraves",
+        r"luke\s+combs",
+        r"morgan\s+wallen",
+        r"chris\s+stapleton",
+        r"jelly\s+roll",
+        r"zach\s+bryan",
+        r"ella\s+langley",
+        r"stagecoach",
+        r"tennessee\s+farm",       # Carrie Underwood про ферму в Теннесси
+        r"\bnashville\b.{0,40}(country|farm|hometown)",
+        # --- Рок, инди, металл ---
+        r"\brock\s+(band|album|song|legend|hall\s+of\s+fame)",
+        r"\bmetal\s+(band|album)",
+        r"foo\s+fighters",
+        r"sepultura",
+        r"metallica",
+        r"\bnirvana\b",
+        # --- URL-разделы Billboard/Pitchfork — ловим жанр прямо из ссылки ---
+        r"billboard\.com/music/country/",
+        r"billboard\.com/music/pop/",
+        r"billboard\.com/music/rock/",
+        r"billboard\.com/music/latin/",
+        r"billboard\.com/music/dance-electronic/",
+        r"billboard\.com/music/k-pop/",
+        # --- Лайфстайл-байоты не про музыку (фермы, дети, свадьбы) ---
+        r"\b(farm\s+life|wedding|engagement|baby\s+shower|pregnancy)\b",
     ],
 }

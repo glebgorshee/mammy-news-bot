@@ -289,11 +289,13 @@ _COMPILED_HARD_REJECT: dict[str, list[re.Pattern]] = {
 
 
 def is_hard_rejected(item: NewsItem, category_key: str) -> str | None:
-    """Жёсткий regex-фильтр до LLM. Возвращает совпавший паттерн или None."""
+    """Жёсткий regex-фильтр до LLM. Возвращает совпавший паттерн или None.
+    Проверяет и текст (заголовок + описание), и URL — некоторые издания (Billboard)
+    зашивают жанр прямо в путь ссылки, что ловится точнее, чем по словам."""
     patterns = _COMPILED_HARD_REJECT.get(category_key)
     if not patterns:
         return None
-    text = f"{item.title}\n{item.summary or ''}"
+    text = f"{item.title}\n{item.summary or ''}\n{item.link or ''}"
     for p in patterns:
         if p.search(text):
             return p.pattern
