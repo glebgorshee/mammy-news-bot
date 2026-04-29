@@ -3,6 +3,7 @@
 OAuth 2.0 + chat completions. Бесплатный тариф для физлиц (GIGACHAT_API_PERS).
 """
 import os
+import re
 import time
 import uuid
 import logging
@@ -36,6 +37,20 @@ class GigaChatClient:
             verify=False,
             timeout=30,
         )
+        if r.status_code == 401:
+            # Диагностика: что за ключ нам подсунули? (без раскрытия — только длина + хвост)
+            k = self.auth_key or ""
+            tail = k[-6:] if len(k) > 6 else "(short)"
+            looks_like_uuid = bool(re.fullmatch(r"[0-9a-fA-F-]{36}", k.strip()))
+            looks_like_b64 = bool(re.fullmatch(r"[A-Za-z0-9+/=_-]{60,}", k.strip()))
+            log.error(
+                "GigaChat 401 Unauthorized. scope=%s, длина ключа=%d, хвост=...%s, "
+                "похоже_на_UUID=%s, похоже_на_base64=%s. "
+                "Скорее всего: (1) скопирован Client ID вместо Authorization data, "
+                "(2) тип scope не совпадает с типом проекта (PERS/B2B/CORP), "
+                "(3) попали лишние пробелы/перенос в секрет.",
+                self.scope, len(k), tail, looks_like_uuid, looks_like_b64,
+            )
         r.raise_for_status()
         j = r.json()
         self._token = j["access_token"]
