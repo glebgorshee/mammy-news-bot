@@ -320,6 +320,8 @@ def prepare_ru_post(item: NewsItem) -> tuple[str, str]:
 
 
 def format_post(category: dict, item: NewsItem, ru_title: str, ru_body: str) -> str:
+    """Самодостаточный пост: заголовок + тело + хэштег. Без ссылок и атрибуции —
+    читатель должен узнавать всё прямо из текста, без перехода куда-либо."""
     emoji = category["emoji"]
     hashtag = category.get("hashtag", "")
     parts = [
@@ -327,7 +329,6 @@ def format_post(category: dict, item: NewsItem, ru_title: str, ru_body: str) -> 
     ]
     if ru_body:
         parts += ["", html.escape(ru_body)]
-    parts += ["", f"🔗 <a href=\"{html.escape(item.link)}\">{html.escape(item.source)}</a>"]
     if hashtag:
         parts += ["", hashtag]
     return "\n".join(parts)
