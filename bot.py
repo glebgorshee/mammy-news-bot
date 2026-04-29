@@ -15,7 +15,7 @@ from urllib.parse import urljoin
 import feedparser
 import requests
 
-from sources import SOURCES, POSTS_PER_CATEGORY, FRESHNESS_HOURS
+from sources import SOURCES, POSTS_PER_CATEGORY, FRESHNESS_HOURS, HARD_REJECT_PATTERNS
 from state import load_posted_urls, save_posted_urls
 from translator import prepare_post, is_relevant
 
@@ -282,6 +282,24 @@ def _strip_html(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+_COMPILED_HARD_REJECT: dict[str, list[re.Pattern]] = {
+    key: [re.compile(p, re.IGNORECASE) for p in patterns]
+    for key, patterns in HARD_REJECT_PATTERNS.items()
+}
+
+
+def is_hard_rejected(item: NewsItem, category_key: str) -> str | None:
+    """Жёсткий regex-фильтр до LLM. Возвращает совпавший паттерн или None."""
+    patterns = _COMPILED_HARD_REJECT.get(category_key)
+    if not patterns:
+        return None
+    text = f"{item.title}\n{item.summary or ''}"
+    for p in patterns:
+        if p.search(text):
+            return p.pattern
+    return None
+
+
 def collect_candidates(category_key: str) -> list[NewsItem]:
     cutoff = datetime.now(timezone.utc) - timedelta(hours=FRESHNESS_HOURS)
     candidates: list[NewsItem] = []
@@ -370,6 +388,21 @@ def main() -> int:
         candidates = collect_candidates(key)
         candidates = [c for c in candidates if c.link not in posted_urls]
         log.info("Кандидатов после фильтра по памяти: %d", len(candidates))
+
+        # Жёсткий regex-блэклист срабатывает ДО обращения к LLM.
+        # Это страховка от очевидного мусора (политика в музыке, K-pop, спорт и т.п.),
+        # который GigaChat иногда пропускает.
+        before_hard = len(candidates)
+        kept: list[NewsItem] = []
+        for c in candidates:
+            hit = is_hard_rejected(c, key)
+            if hit:
+                log.info("  — жёсткий блэклист (%s): %s", hit, c.title[:90])
+            else:
+                kept.append(c)
+        candidates = kept
+        if before_hard != len(candidates):
+            log.info("После hard-фильтра: %d (было %d)", len(candidates), before_hard)
 
         # Фильтр релевантности: проходим по самым свежим, GigaChat решает по теме или нет.
         # Ограничиваем число AI-проверок, чтобы не упереться в квоту.
