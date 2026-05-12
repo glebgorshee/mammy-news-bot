@@ -448,6 +448,7 @@ HARD_REJECT_PATTERNS = {
         r"\bотмеч(ает|ают|ил|или)\s+(юбилей|годовщин|\d+\s*-?лет)",
         r"\banniversary\b",
         r"\b\d{1,2}\s+years?\s+(of|since|after)\s+",  # «10 years of Coloring Book»
+        r"turns?\s+\d{1,2}\b",                          # «Coloring Book turns 10»
         r"throwback\s+thursday",
         r"\b(re-?issue|reissue|reissued|переизда)",
     ],
