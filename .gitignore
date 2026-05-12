@@ -13,8 +13,9 @@ run_bot.ps1
 *.log.old
 run.log.tmp.*
 
-# Local state (posted articles tracker)
-state.json
+# state.json раньше был в .gitignore — но workflow коммитит его
+# обратно в репо как «память бота», и без коммита каждый запуск
+# стартует с нулевой памятью и рискует публиковать дубли.
 
 # Symlink to Claude Code memory (separate repo)
 CLAUDE-MEMORY
