@@ -150,7 +150,7 @@ def parse_feed(source: dict) -> list[NewsItem]:
         return []
 
     items: list[NewsItem] = []
-    for entry in feed.entries[:15]:
+    for entry in feed.entries[:25]:
         link = entry.get("link")
         title = (entry.get("title") or "").strip()
         if not link or not title:
@@ -328,7 +328,8 @@ def format_post(
     en_body: str = "",
 ) -> str:
     """Двуязычный самодостаточный пост: RU-версия (заголовок + тело),
-    затем EN-версия для тренировки английского. Без ссылок и атрибуции."""
+    затем EN-версия для тренировки английского. В конце — аккуратная ссылка
+    на оригинал, чтобы можно было перейти и почитать дальше."""
     emoji = category["emoji"]
     hashtag = category.get("hashtag", "")
     parts = [
@@ -341,6 +342,10 @@ def format_post(
         parts += ["", "🇬🇧 " + (f"<b>{html.escape(en_title)}</b>" if en_title else "")]
         if en_body:
             parts += ["", html.escape(en_body)]
+    # Аккуратная ссылка на оригинал — перейти и почитать полностью / больше по теме.
+    if item.link:
+        src = html.escape(item.source) if item.source else "источник"
+        parts += ["", f'🔗 <a href="{html.escape(item.link)}">Читать полностью</a> · {src}']
     if hashtag:
         parts += ["", hashtag]
     return "\n".join(parts)
@@ -475,36 +480,47 @@ def main() -> int:
         log.info("Релевантных: %d", len(relevant))
 
         picked = 0
-        for item in relevant:
-            if picked >= POSTS_PER_CATEGORY:
-                break
+        posted_links: set[str] = set()
 
-            # МЕДИА ОБЯЗАТЕЛЬНО: ищем картинку до подготовки поста.
-            # Если не нашли — пропускаем кандидата, берём следующего.
-            img_url = item.image or _fetch_og_image(item.link)
-            if not img_url:
-                log.info("  — без картинки, пропускаю: %s", item.title[:90])
-                continue
-            img_dl = download_image(img_url)
-            if img_dl is None:
-                log.info("  — картинка не качается, пропускаю: %s", img_url[:80])
-                continue
-
+        def publish(item, img_dl) -> None:
+            """Готовит и публикует пост (с картинкой или текстом). Двигает счётчики."""
+            nonlocal picked, total_posted
             try:
                 ru_title, ru_body, en_title, en_body = prepare_ru_post(item)
             except Exception as e:
                 log.warning("Ошибка подготовки поста %s: %s", item.link, e)
-                continue
-
+                return
             post_text = format_post(category, item, ru_title, ru_body, en_title, en_body)
             if send_to_telegram(token, chat_id, post_text, image_data=img_dl):
-                log.info("Опубликовано: %s", item.link)
+                log.info("Опубликовано%s: %s", "" if img_dl else " (текстом, без картинки)", item.link)
                 new_urls.add(item.link)
+                posted_links.add(item.link)
                 picked += 1
                 total_posted += 1
                 time.sleep(3)
             else:
                 log.warning("Не удалось опубликовать %s", item.link)
+
+        # Проход 1 — приоритет постам с картинкой (картинка ЖЕЛАТЕЛЬНА).
+        for item in relevant:
+            if picked >= POSTS_PER_CATEGORY:
+                break
+            img_url = item.image or _fetch_og_image(item.link)
+            img_dl = download_image(img_url) if img_url else None
+            if img_dl is None:
+                continue  # на этом проходе пропускаем — доберём текстом ниже
+            publish(item, img_dl)
+
+        # Проход 2 — если картинок не хватило, добираем релевантные новости
+        # текстом, а не теряем их молча.
+        if picked < POSTS_PER_CATEGORY:
+            for item in relevant:
+                if picked >= POSTS_PER_CATEGORY:
+                    break
+                if item.link in posted_links:
+                    continue
+                log.info("  — без картинки, публикую текстом: %s", item.title[:90])
+                publish(item, None)
 
         log.info("Категория %s: опубликовано %d", key, picked)
 

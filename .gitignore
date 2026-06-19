@@ -19,3 +19,6 @@ run.log.tmp.*
 
 # Symlink to Claude Code memory (separate repo)
 CLAUDE-MEMORY
+
+# Локальный knowledge graph (graphify) — не в репозиторий
+graphify-out/

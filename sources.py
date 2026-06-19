@@ -338,11 +338,11 @@ SOURCES = {
 }
 
 # Сколько постов публиковать за один прогон на категорию
-# 3 прогона в день × 1 пост = 3 новости в каждой категории в день
-POSTS_PER_CATEGORY = 1
+# 3 прогона в день × 3 поста = до 9 новостей в каждой категории в день
+POSTS_PER_CATEGORY = 3
 
 # Насколько свежими должны быть новости (часы)
-FRESHNESS_HOURS = 24
+FRESHNESS_HOURS = 36
 
 # Жёсткий блэклист по regex — режется ДО проверки LLM на релевантность.
 # Срабатывает по полю title или summary (без учёта регистра).
@@ -401,7 +401,7 @@ HARD_REJECT_PATTERNS = {
         r"newjeans",
         r"stray\s+kids",
         r"\btwice\b",
-        r"seventeen",
+        r"\bseventeen\b",
         r"enhypen",
         r"айдол",
         # --- Поп-музыка и другие жанры вне рэп/R&B ---
@@ -442,13 +442,13 @@ HARD_REJECT_PATTERNS = {
         # --- Лайфстайл-байоты не про музыку (фермы, дети, свадьбы) ---
         r"\b(farm\s+life|wedding|engagement|baby\s+shower|pregnancy)\b",
         # --- Юбилеи и годовщины старых релизов (нужны только новые) ---
-        r"\b\d{1,2}\s*-?\s*лет(ие|ия|ию)\b",        # «10-летие», «20 летие»
+        r"\b\d{1,2}\s*-?\s*лет(ие|ия|ию)\b.{0,40}(альбом|релиз|сингл|трек|пластинк|клип|выход|выпуск|тур)",  # «10-летие альбома» (НЕ день рождения артиста)
         r"\b\d{1,2}\s+лет\s+(альбом|релиз|сингл|трек|пластинк|выход|выпуск|тур|клип)",
         r"годовщин",                                  # «годовщина выхода»
         r"\bотмеч(ает|ают|ил|или)\s+(юбилей|годовщин|\d+\s*-?лет)",
         r"\banniversary\b",
         r"\b\d{1,2}\s+years?\s+(of|since|after)\s+",  # «10 years of Coloring Book»
-        r"turns?\s+\d{1,2}\b",                          # «Coloring Book turns 10»
+        r"(album|mixtape|record|single|track|\bep\b|\blp\b)\b.{0,30}turns?\s+\d{1,2}\b",  # «album turns 10» (НЕ «artist turns 21»)
         r"throwback\s+thursday",
         r"\b(re-?issue|reissue|reissued|переизда)",
     ],
