@@ -471,12 +471,9 @@ def main() -> int:
                 else:
                     log.info("  — нерелевантно: %s", item.title[:90])
             except Exception as e:
-                log.warning("Ошибка проверки релевантности (%s), пропускаю", e)
-                relevant.append(item)
-        if not relevant and candidates:
-            # Если фильтр всех отбраковал — берём самую свежую как страховку
-            log.info("Релевантных не нашлось, беру самую свежую как fallback")
-            relevant = candidates[: POSTS_PER_CATEGORY * 6]
+                # Fail-closed: не смогли проверить — не публикуем. Лучше пропустить
+                # новость, чем налить в канал непроверенного шлака.
+                log.warning("Ошибка проверки релевантности (%s), отклоняю: %s", e, item.title[:90])
         log.info("Релевантных: %d", len(relevant))
 
         picked = 0

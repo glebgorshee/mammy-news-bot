@@ -84,11 +84,14 @@ def _giga_client():
 def is_relevant(title: str, summary: str, category_title: str, interests: str) -> bool:
     """
     Решает, подходит ли новость в категорию.
-    Если GigaChat недоступен — пропускаем фильтр (возвращаем True).
+    Fail-closed: если GigaChat недоступен (нет ключа, квота, сеть) — новость
+    ОТКЛОНЯЕТСЯ. Непроверенное не публикуем: молчание лучше шлака в канале.
     """
-    giga = _giga_client()
-    if giga is None or not interests:
+    if not interests:
         return True
+    giga = _giga_client()
+    if giga is None:
+        return False
 
     user_msg = (
         f"РАЗДЕЛ КАНАЛА: {category_title}\n\n"
@@ -107,8 +110,11 @@ def is_relevant(title: str, summary: str, category_title: str, interests: str) -
         first = re.sub(r"[^А-ЯA-Z]", "", answer.split()[0] if answer.split() else "")
         return first.startswith("ДА") or first.startswith("YES")
     except Exception as e:
-        log.warning("Ошибка проверки релевантности (%s), пропускаю фильтр", e)
-        return True
+        # Fail-closed: ошибка (чаще всего сгоревшая квота GigaChat) = НЕТ.
+        # Раньше тут было True — и когда квота кончалась, фильтр молча
+        # отключался и в канал лился весь нефильтрованный поток.
+        log.warning("Ошибка проверки релевантности (%s), отклоняю", e)
+        return False
 
 
 # ----------------------------- Подготовка поста -----------------------------

@@ -52,7 +52,7 @@ SOURCES = {
             {"name": "MIT Tech Review AI", "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed", "lang": "en"},
             {"name": "Ars Technica AI",    "url": "https://arstechnica.com/ai/feed/",                                "lang": "en"},
             {"name": "TechCrunch AI",      "url": "https://techcrunch.com/category/artificial-intelligence/feed/",   "lang": "en"},
-            {"name": "The Verge",          "url": "https://www.theverge.com/rss/index.xml",                          "lang": "en"},
+            {"name": "The Verge AI",       "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", "lang": "en"},
             # Авторские блоги/ньюслеттеры — высший сигнал по AI
             {"name": "Simon Willison",     "url": "https://simonwillison.net/atom/everything/",                      "lang": "en"},
             {"name": "Latent Space",       "url": "https://www.latent.space/feed",                                   "lang": "en"},
@@ -134,8 +134,6 @@ SOURCES = {
             {"name": "@rapinfo",         "url": "rapinfo",         "lang": "ru", "type": "telegram"},
             {"name": "@hiphopru",        "url": "hiphopru",        "lang": "ru", "type": "telegram"},
             {"name": "@rhymestg",        "url": "rhymestg",        "lang": "ru", "type": "telegram"},
-            # Русские RSS
-            {"name": "InterMedia",      "url": "https://www.intermedia.ru/rss/news.xml",    "lang": "ru"},
             # Зарубежные RSS — крупные издания
             {"name": "XXL Magazine",    "url": "https://www.xxlmag.com/feed/",              "lang": "en"},
             {"name": "HotNewHipHop",    "url": "https://www.hotnewhiphop.com/feed",         "lang": "en"},
@@ -195,87 +193,6 @@ SOURCES = {
             {"name": "Juxtapoz",             "url": "https://www.juxtapoz.com/feed/",                   "lang": "en"},
             {"name": "Colossal",             "url": "https://www.thisiscolossal.com/feed/",             "lang": "en"},
             {"name": "Hyperallergic",        "url": "https://hyperallergic.com/feed/",                  "lang": "en"},
-        ],
-    },
-    "russia": {
-        "emoji": "🇷🇺",
-        "title": "Россия",
-        "hashtag": "#россия",
-        "interests": (
-            "ТОЛЬКО важные федеральные события России — то, что реально влияет на страну. "
-            "Подходит: ключевые решения Кремля и правительства, новые законы общегосударственного уровня, "
-            "военная операция и её итоги, серьёзные ЧП федерального масштаба с большим резонансом, "
-            "крупные политические заявления первых лиц (Путин, Мишустин, Лавров) по существу, "
-            "санкции и международные отношения на высшем уровне, "
-            "крупные экономические указы, демография, миграция, безопасность страны. "
-            "КАТЕГОРИЧЕСКИ НЕ подходит и должно отклоняться: "
-            "спорт любого вида (тренеры, матчи, голы, поражения, чемпионаты, биатлон, хоккей, футбол), "
-            "мелкие происшествия (водитель сбил, кого-то ограбили, локальные ДТП и пожары), "
-            "курьёзные истории и анекдотичные цитаты чиновников ('министр посоветовал футболисту'), "
-            "поражения российских клубов и спортсменов, "
-            "светские новости и шоу-бизнес, "
-            "обычные региональные новости без федерального резонанса, "
-            "пустая пропагандистская риторика без конкретных фактов и решений, "
-            "криминальная мелочёвка. "
-            "Только новости уровня 'это важно для всей страны' — иначе отклоняй."
-        ),
-        "feeds": [
-            {"name": "Лента.ру",     "url": "https://lenta.ru/rss/news",                         "lang": "ru"},
-            {"name": "ТАСС",         "url": "https://tass.ru/rss/v2.xml",                        "lang": "ru"},
-            {"name": "РИА Новости",  "url": "https://ria.ru/export/rss2/archive/index.xml",      "lang": "ru"},
-            {"name": "Интерфакс",    "url": "https://www.interfax.ru/rss.asp",                   "lang": "ru"},
-            {"name": "Коммерсантъ",  "url": "https://www.kommersant.ru/RSS/news.xml",            "lang": "ru"},
-            {"name": "Газета.ру",    "url": "https://www.gazeta.ru/export/rss/first.xml",        "lang": "ru"},
-        ],
-    },
-    "economy": {
-        "emoji": "💰",
-        "title": "Экономика, финансы, крипта",
-        "hashtag": "#экономика",
-        "interests": (
-            "Экономика и финансы с фокусом на ИНВЕСТИЦИОННЫЕ ИДЕИ и РОСТ АКТИВОВ "
-            "частного инвестора — что покупать, во что вкладываться, где есть апсайд.\n\n"
-            "ВЫСШИЙ ПРИОРИТЕТ:\n"
-            "- конкретные инвест-идеи и разборы активов (российские и зарубежные акции "
-            "с потенциалом роста, перспективные облигации, ETF, фонды);\n"
-            "- IPO и pre-IPO с понятной тезой роста, M&A с переоценкой бумаг;\n"
-            "- ключевые отчёты компаний (Сбер, Газпром, Yandex, Магнит, Apple, Nvidia, "
-            "Tesla, Meta) — выручка, прибыль, прогнозы, дивиденды;\n"
-            "- решения ЦБ РФ и ФРС по ставке — как влияет на акции, облигации, рубль;\n"
-            "- крипто-идеи: BTC/ETH циклы, перспективные альты, DeFi, стейкинг-доходности, "
-            "крупные айрдропы, новые L1/L2, RWA-токенизация, регуляция крипты;\n"
-            "- сырьё с инвест-углом (нефть, золото, медь, литий — что покупать);\n"
-            "- валюты как инструмент (USD/RUB, юань, токенизированные доллары).\n\n"
-            "ТАКЖЕ ДА:\n"
-            "- макро-новости, у которых есть ясный вывод для инвестора;\n"
-            "- санкции и геополитика — только если меняют инвест-картину.\n\n"
-            "НЕ нужны:\n"
-            "- голая макро-статистика без выводов 'что делать инвестору';\n"
-            "- спорт, культура, шоу-бизнес, бытовые истории;\n"
-            "- технологии без финансовой стороны;\n"
-            "- политика без экономического контекста;\n"
-            "- скам-схемы 'X100 за неделю', пирамиды, агрессивные крипто-промо."
-        ),
-        "feeds": [
-            # Русские крупные
-            {"name": "RBC",              "url": "https://rssexport.rbc.ru/rbcnews/news/30/full.rss",     "lang": "ru"},
-            {"name": "Коммерсантъ",      "url": "https://www.kommersant.ru/RSS/section-economics.xml",   "lang": "ru"},
-            {"name": "Forbes.ru",        "url": "https://www.forbes.ru/newrss.xml",                      "lang": "ru"},
-            # Русские независимые премиум-качество
-            {"name": "The Bell",         "url": "https://thebell.io/feed",                               "lang": "ru"},
-            {"name": "Frank Media",      "url": "https://frankmedia.ru/feed",                            "lang": "ru"},
-            # Зарубежные крупные
-            {"name": "CNBC Business",    "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10001147", "lang": "en"},
-            # Крипта (русские)
-            {"name": "ForkLog",          "url": "https://forklog.com/feed",                              "lang": "ru"},
-            {"name": "Incrypted",        "url": "https://incrypted.com/feed/",                           "lang": "ru"},
-            # Крипта (зарубежные)
-            {"name": "CoinDesk",         "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",       "lang": "en"},
-            {"name": "Decrypt",          "url": "https://decrypt.co/feed",                               "lang": "en"},
-            {"name": "The Block",        "url": "https://www.theblock.co/rss.xml",                       "lang": "en"},
-            {"name": "CoinTelegraph",    "url": "https://cointelegraph.com/rss",                         "lang": "en"},
-            {"name": "Bankless",         "url": "https://www.bankless.com/feed",                         "lang": "en"},
-            {"name": "The Defiant",      "url": "https://thedefiant.io/feed",                            "lang": "en"},
         ],
     },
     "msk_events": {
