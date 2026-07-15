@@ -314,22 +314,14 @@ def collect_candidates(category_key: str) -> list[NewsItem]:
     return candidates
 
 
-def prepare_ru_post(item: NewsItem) -> tuple[str, str, str, str]:
-    """Вернуть (ru_title, ru_body, en_title, en_body) — делегируется в translator.prepare_post."""
+def prepare_ru_post(item: NewsItem) -> tuple[str, str]:
+    """Вернуть (ru_title, ru_body) — делегируется в translator.prepare_post."""
     return prepare_post(item.title, item.summary, item.source, item.lang)
 
 
-def format_post(
-    category: dict,
-    item: NewsItem,
-    ru_title: str,
-    ru_body: str,
-    en_title: str = "",
-    en_body: str = "",
-) -> str:
-    """Двуязычный самодостаточный пост: RU-версия (заголовок + тело),
-    затем EN-версия для тренировки английского. В конце — аккуратная ссылка
-    на оригинал, чтобы можно было перейти и почитать дальше."""
+def format_post(category: dict, item: NewsItem, ru_title: str, ru_body: str) -> str:
+    """Самодостаточный русский пост: заголовок + тело. В конце — аккуратная
+    ссылка на оригинал, чтобы можно было перейти и почитать дальше."""
     emoji = category["emoji"]
     hashtag = category.get("hashtag", "")
     parts = [
@@ -337,11 +329,6 @@ def format_post(
     ]
     if ru_body:
         parts += ["", html.escape(ru_body)]
-    # Английская версия — для тренировки языка
-    if en_title or en_body:
-        parts += ["", "🇬🇧 " + (f"<b>{html.escape(en_title)}</b>" if en_title else "")]
-        if en_body:
-            parts += ["", html.escape(en_body)]
     # Аккуратная ссылка на оригинал — перейти и почитать полностью / больше по теме.
     if item.link:
         src = html.escape(item.source) if item.source else "источник"
@@ -395,10 +382,9 @@ def send_to_telegram(
     text: str,
     image_data: tuple[bytes, str] | None = None,
 ) -> bool:
-    """Отправляет двуязычный пост с обязательной картинкой.
-    Если текст длиннее caption-лимита (двуязычные посты), фото идёт первым
-    с компактной caption, а полный текст — следующим сообщением, чтобы
-    у мамы под картинкой шёл нормальный читабельный длинный пост."""
+    """Отправляет пост с картинкой. Если текст длиннее caption-лимита,
+    фото идёт первым с компактной caption, а полный текст — следующим
+    сообщением, чтобы под картинкой шёл нормальный читабельный пост."""
     if image_data is None:
         # Без картинки в этом потоке мы сюда не попадаем (фильтрация выше),
         # но на всякий случай — fallback на текст.
@@ -410,7 +396,7 @@ def send_to_telegram(
         # Короткий пост влезает в caption — одно сообщение
         return _send_photo(token, chat_id, img_bytes, ctype, text)
 
-    # Двуязычный пост обычно длиннее лимита. Шлём фото с заголовком + первой строчкой
+    # Длинный пост не влезает в caption. Шлём фото с заголовком
     # как caption-anchor, а полный пост следом отдельным сообщением.
     short_caption_lines = text.split("\n", 4)[:1]  # только заголовок-строка с эмодзи
     short_caption = "\n".join(short_caption_lines)[:TG_CAPTION_LIMIT]
@@ -483,11 +469,11 @@ def main() -> int:
             """Готовит и публикует пост (с картинкой или текстом). Двигает счётчики."""
             nonlocal picked, total_posted
             try:
-                ru_title, ru_body, en_title, en_body = prepare_ru_post(item)
+                ru_title, ru_body = prepare_ru_post(item)
             except Exception as e:
                 log.warning("Ошибка подготовки поста %s: %s", item.link, e)
                 return
-            post_text = format_post(category, item, ru_title, ru_body, en_title, en_body)
+            post_text = format_post(category, item, ru_title, ru_body)
             if send_to_telegram(token, chat_id, post_text, image_data=img_dl):
                 log.info("Опубликовано%s: %s", "" if img_dl else " (текстом, без картинки)", item.link)
                 new_urls.add(item.link)
